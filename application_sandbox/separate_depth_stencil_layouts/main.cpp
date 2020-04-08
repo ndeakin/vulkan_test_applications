@@ -65,8 +65,6 @@ struct MixedSamplesFrameData {
   // and its view here.
   vulkan::ImagePointer depth_stencil_image_;
   containers::unique_ptr<vulkan::VkImageView> depth_stencil_image_view_;
-  vulkan::ImagePointer depth_stencil_resolve_image_;
-  containers::unique_ptr<vulkan::VkImageView> depth_stencil_resolve_image_view_;
 };
 
 VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR
@@ -84,7 +82,6 @@ class MixedSamplesSample
         Sample<MixedSamplesFrameData>(
             data->allocator(), data, 1, 512, 1, 1,
             sample_application::SampleOptions()
-                .EnableMultisampling()
                 .EnableDepthBuffer()
                 .AddDeviceExtensionStructure(
                     &separate_depth_stencil_layout_features),
@@ -92,7 +89,6 @@ class MixedSamplesSample
             {VK_KHR_MULTIVIEW_EXTENSION_NAME,
              VK_KHR_MAINTENANCE2_EXTENSION_NAME,
              VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-             VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
              VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME}),
         cube_(data->allocator(), data->logger(), cube_data),
         torus_(data->allocator(), data->logger(), torus_data) {}
@@ -176,13 +172,6 @@ class MixedSamplesSample
         VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR,   // layout
         VK_IMAGE_ASPECT_DEPTH_BIT                      // aspectMask
     };
-    VkAttachmentReference2KHR resolve_attachment = {
-        VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR,            // sType
-        nullptr,                                                 // pNext
-        2,                                                       // attachment
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,        // layout
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT  // aspectMask
-    };
 
     VkAttachmentDescription2KHR color_attachment_description{
         VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR,  // sType
@@ -242,37 +231,15 @@ class MixedSamplesSample
         VK_IMAGE_LAYOUT_UNDEFINED,                       // initialLayout
         VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR      // finalLayout
     };
-    VkAttachmentDescription2KHR depth_stencil_resolve_attachment_description{
-        VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR,   // sType
-        nullptr,                                          // pNext
-        0,                                                // flags
-        kDepthStencilFormat,                              // format
-        VK_SAMPLE_COUNT_1_BIT,                            // samples
-        VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // loadOp
-        VK_ATTACHMENT_STORE_OP_STORE,                     // storeOp
-        VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // stencilLoadOp
-        VK_ATTACHMENT_STORE_OP_STORE,                     // stencilStoreOp
-        VK_IMAGE_LAYOUT_UNDEFINED,                        // initialLayout
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // finalLayout
-    };
-
-    VkSubpassDescriptionDepthStencilResolveKHR
-        subpass_description_depth_stencil_resolve{
-            VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR,  // sType
-            nullptr,                      // pNext
-            VK_RESOLVE_MODE_MAX_BIT_KHR,  // depthResolveMode
-            VK_RESOLVE_MODE_MAX_BIT_KHR,  // stencilResolveMode
-            &resolve_attachment           // pDepthStencilResolveAttachment
-        };
 
     torus_render_pass_ = containers::make_unique<vulkan::VkRenderPass>(
         data_->allocator(),
         app()->CreateRenderPass2(
-            {color_attachment_description, depth_stencil_attachment_description,
-             depth_stencil_resolve_attachment_description},  // AttachmentDescriptions
+            {color_attachment_description,
+             depth_stencil_attachment_description},  // AttachmentDescriptions
             {{
                 VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR,  // sType
-                &subpass_description_depth_stencil_resolve,   // pNext
+                nullptr,                                      // pNext
                 0,                                            // flags
                 VK_PIPELINE_BIND_POINT_GRAPHICS,  // pipelineBindPoint
                 0,                                // viewMask
@@ -291,11 +258,11 @@ class MixedSamplesSample
     cube_render_pass_ = containers::make_unique<vulkan::VkRenderPass>(
         data_->allocator(),
         app()->CreateRenderPass2(
-            {color_attachment_description2, depth_read_attachment_description,
-             depth_stencil_resolve_attachment_description},  // AttachmentDescriptions
+            {color_attachment_description2,
+             depth_read_attachment_description},  // AttachmentDescriptions
             {{
                 VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR,  // sType
-                &subpass_description_depth_stencil_resolve,   // pNext
+                nullptr,                                      // pNext
                 0,                                            // flags
                 VK_PIPELINE_BIND_POINT_GRAPHICS,  // pipelineBindPoint
                 0,                                // viewMask
@@ -420,33 +387,6 @@ class MixedSamplesSample
         frame_data->depth_stencil_image_.get(), VK_IMAGE_VIEW_TYPE_2D,
         {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1});
 
-    VkImageCreateInfo depth_stencil_resolve_image_create_info = {
-        VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,  // sType
-        nullptr,                              // pNext
-        0,                                    // flags
-        VK_IMAGE_TYPE_2D,                     // imageType
-        kDepthStencilFormat,                  // format
-        {
-            app()->swapchain().width(),
-            app()->swapchain().height(),
-            app()->swapchain().depth(),
-        },                                            // extent
-        1,                                            // mipLevels
-        1,                                            // arrayLayers
-        VK_SAMPLE_COUNT_1_BIT,                        // samples
-        VK_IMAGE_TILING_OPTIMAL,                      // tiling
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,  // usage
-        VK_SHARING_MODE_EXCLUSIVE,                    // sharingMode
-        0,                                            // queueFamilyIndexCount
-        nullptr,                                      // pQueueFamilyIndices
-        VK_IMAGE_LAYOUT_UNDEFINED,                    // initialLayout
-    };
-    frame_data->depth_stencil_resolve_image_ =
-        app()->CreateAndBindImage(&depth_stencil_resolve_image_create_info);
-    frame_data->depth_stencil_resolve_image_view_ = app()->CreateImageView(
-        frame_data->depth_stencil_resolve_image_.get(), VK_IMAGE_VIEW_TYPE_2D,
-        {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1});
-
     // Initialize the torus descriptor sets
     frame_data->torus_descriptor_set_ =
         containers::make_unique<vulkan::DescriptorSet>(
@@ -531,9 +471,8 @@ class MixedSamplesSample
     app()->device()->vkUpdateDescriptorSets(app()->device(), 1, &cube_write, 0,
                                             nullptr);
 
-    ::VkImageView raw_views[3] = {
-        color_view(frame_data), *frame_data->depth_stencil_image_view_,
-        *frame_data->depth_stencil_resolve_image_view_};
+    ::VkImageView raw_views[3] = {color_view(frame_data),
+                                  *frame_data->depth_stencil_image_view_};
 
     // Create a framebuffer with depth and image attachments
     VkFramebufferCreateInfo framebuffer_create_info{
@@ -541,7 +480,7 @@ class MixedSamplesSample
         nullptr,                                    // pNext
         0,                                          // flags
         *torus_render_pass_,                        // renderPass
-        3,                                          // attachmentCount
+        2,                                          // attachmentCount
         raw_views,                                  // attachments
         app()->swapchain().width(),                 // width
         app()->swapchain().height(),                // height
