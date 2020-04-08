@@ -16,11 +16,12 @@
 #version 450
 
 layout(location = 0) out vec4 out_color;
-layout (location = 1) in vec2 texcoord;
+layout(location = 1) in vec2 texcoord;
 
-layout(input_attachment_index = 0, binding = 2, set = 0) uniform subpassInput depth;
+layout(input_attachment_index = 0, binding = 2,
+       set = 0) uniform subpassInput depth;
 
 void main() {
-    vec4 f = subpassLoad(depth).rrrr;
-    out_color = vec4(pow(f.rgb, vec3(10.0, 10.0, 10.0)) , 1.0);
+  vec4 f = subpassLoad(depth).rrrr;
+  out_color = vec4(pow(f.rgb, vec3(10.0, 10.0, 10.0)), 1.0);
 }

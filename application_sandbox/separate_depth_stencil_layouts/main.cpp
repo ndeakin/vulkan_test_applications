@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
+
 #include "application_sandbox/sample_application_framework/sample_application.h"
+#include "mathfu/matrix.h"
+#include "mathfu/vector.h"
 #include "support/entry/entry.h"
 #include "vulkan_helpers/buffer_frame_data.h"
 #include "vulkan_helpers/helper_functions.h"
 #include "vulkan_helpers/vulkan_application.h"
 #include "vulkan_helpers/vulkan_model.h"
-
-#include <chrono>
-#include "mathfu/matrix.h"
-#include "mathfu/vector.h"
 
 using Mat44 = mathfu::Matrix<float, 4, 4>;
 using Vector4 = mathfu::Vector<float, 4>;
@@ -70,9 +70,7 @@ struct MixedSamplesFrameData {
 VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR
     separate_depth_stencil_layout_features{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR,
-        nullptr,
-        true
-    };
+        nullptr, true};
 
 // This creates an application with 16MB of image memory, and defaults
 // for host, and device buffer sizes.
@@ -83,10 +81,11 @@ class MixedSamplesSample
       : data_(data),
         Sample<MixedSamplesFrameData>(
             data->allocator(), data, 1, 512, 1, 1,
-            sample_application::SampleOptions().EnableDepthBuffer()
-                .AddDeviceExtensionStructure(&separate_depth_stencil_layout_features),
-            {0},
-            {VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME},
+            sample_application::SampleOptions()
+                .EnableDepthBuffer()
+                .AddDeviceExtensionStructure(
+                    &separate_depth_stencil_layout_features),
+            {0}, {VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME},
             {VK_KHR_MULTIVIEW_EXTENSION_NAME,
              VK_KHR_MAINTENANCE2_EXTENSION_NAME,
              VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
@@ -119,10 +118,9 @@ class MixedSamplesSample
     };
 
     torus_pipeline_layout_ = containers::make_unique<vulkan::PipelineLayout>(
-        data_->allocator(),
-        app()->CreatePipelineLayout(
-            {{torus_descriptor_set_layout_bindings_[0],
-              torus_descriptor_set_layout_bindings_[1]}}));
+        data_->allocator(), app()->CreatePipelineLayout(
+                                {{torus_descriptor_set_layout_bindings_[0],
+                                  torus_descriptor_set_layout_bindings_[1]}}));
 
     cube_descriptor_set_layout_bindings_[0] = {
         0,                                  // binding
@@ -143,18 +141,14 @@ class MixedSamplesSample
         VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,  // descriptorType
         1,                                    // descriptorCount
         VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,  // stage
-        nullptr                               // pImmutableSamplers
+        nullptr  // pImmutableSamplers
     };
 
-    cube_pipeline_layout_ =
-        containers::make_unique<vulkan::PipelineLayout>(
-            data_->allocator(),
-            app()->CreatePipelineLayout(
-                {{cube_descriptor_set_layout_bindings_[0],
-                  cube_descriptor_set_layout_bindings_[1],
-                  cube_descriptor_set_layout_bindings_[2]}}));
-
-
+    cube_pipeline_layout_ = containers::make_unique<vulkan::PipelineLayout>(
+        data_->allocator(), app()->CreatePipelineLayout(
+                                {{cube_descriptor_set_layout_bindings_[0],
+                                  cube_descriptor_set_layout_bindings_[1],
+                                  cube_descriptor_set_layout_bindings_[2]}}));
 
     VkAttachmentReference2KHR color_attachment = {
         VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR,  // sType
@@ -172,11 +166,11 @@ class MixedSamplesSample
     };
 
     VkAttachmentReference2KHR depth_read_attachment = {
-        VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR,   // sType
-        nullptr,                                        // pNext
-        1,                                              // attachment
-        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR,    // layout
-        VK_IMAGE_ASPECT_DEPTH_BIT                       // aspectMask
+        VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR,  // sType
+        nullptr,                                       // pNext
+        1,                                             // attachment
+        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR,   // layout
+        VK_IMAGE_ASPECT_DEPTH_BIT                      // aspectMask
     };
 
     VkAttachmentDescription2KHR color_attachment_description{
@@ -221,8 +215,8 @@ class MixedSamplesSample
     VkAttachmentDescriptionStencilLayoutKHR stencil_layout{
         VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR,  // sType
         nullptr,                                                      // pNext
-        VK_IMAGE_LAYOUT_UNDEFINED,                                    // stencilInitialLayout
-        VK_IMAGE_LAYOUT_GENERAL                                       // stencilFinalLayout
+        VK_IMAGE_LAYOUT_UNDEFINED,  // stencilInitialLayout
+        VK_IMAGE_LAYOUT_GENERAL     // stencilFinalLayout
     };
     VkAttachmentDescription2KHR depth_read_attachment_description{
         VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR,  // sType
@@ -241,15 +235,16 @@ class MixedSamplesSample
     torus_render_pass_ = containers::make_unique<vulkan::VkRenderPass>(
         data_->allocator(),
         app()->CreateRenderPass2(
-            {color_attachment_description, depth_stencil_attachment_description},  // AttachmentDescriptions
+            {color_attachment_description,
+             depth_stencil_attachment_description},  // AttachmentDescriptions
             {{
                 VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR,  // sType
-                nullptr,   // pNext
+                nullptr,                                      // pNext
                 0,                                            // flags
                 VK_PIPELINE_BIND_POINT_GRAPHICS,  // pipelineBindPoint
                 0,                                // viewMask
                 1,                                // inputAttachmentCount
-                &depth_read_attachment,                // pInputAttachments
+                &depth_read_attachment,           // pInputAttachments
                 1,                                // colorAttachmentCount
                 &color_attachment,                // colorAttachment
                 nullptr,                          // pResolveAttachments
@@ -263,10 +258,11 @@ class MixedSamplesSample
     cube_render_pass_ = containers::make_unique<vulkan::VkRenderPass>(
         data_->allocator(),
         app()->CreateRenderPass2(
-            {color_attachment_description2, depth_read_attachment_description},  // AttachmentDescriptions
+            {color_attachment_description2,
+             depth_read_attachment_description},  // AttachmentDescriptions
             {{
                 VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR,  // sType
-                nullptr,   // pNext
+                nullptr,                                      // pNext
                 0,                                            // flags
                 VK_PIPELINE_BIND_POINT_GRAPHICS,  // pipelineBindPoint
                 0,                                // viewMask
@@ -284,8 +280,9 @@ class MixedSamplesSample
 
     // Initialize torus shaders
     torus_pipeline_ = containers::make_unique<vulkan::VulkanGraphicsPipeline>(
-        data_->allocator(), app()->CreateGraphicsPipeline(
-                                torus_pipeline_layout_.get(), torus_render_pass_.get(), 0));
+        data_->allocator(),
+        app()->CreateGraphicsPipeline(torus_pipeline_layout_.get(),
+                                      torus_render_pass_.get(), 0));
     torus_pipeline_->AddShader(VK_SHADER_STAGE_VERTEX_BIT, "main",
                                torus_vertex_shader);
     torus_pipeline_->AddShader(VK_SHADER_STAGE_FRAGMENT_BIT, "main",
@@ -308,8 +305,9 @@ class MixedSamplesSample
 
     // Initialize cube shaders
     cube_pipeline_ = containers::make_unique<vulkan::VulkanGraphicsPipeline>(
-        data_->allocator(), app()->CreateGraphicsPipeline(
-                                cube_pipeline_layout_.get(), cube_render_pass_.get(), 0));
+        data_->allocator(),
+        app()->CreateGraphicsPipeline(cube_pipeline_layout_.get(),
+                                      cube_render_pass_.get(), 0));
     cube_pipeline_->AddShader(VK_SHADER_STAGE_VERTEX_BIT, "main",
                               cube_vertex_shader);
     cube_pipeline_->AddShader(VK_SHADER_STAGE_FRAGMENT_BIT, "main",
@@ -371,16 +369,17 @@ class MixedSamplesSample
             app()->swapchain().width(),
             app()->swapchain().height(),
             app()->swapchain().depth(),
-        },                                            // extent
-        1,                                            // mipLevels
-        1,                                            // arrayLayers
-        num_depth_stencil_samples(),                  // samples
-        VK_IMAGE_TILING_OPTIMAL,                      // tiling
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,  // usage
-        VK_SHARING_MODE_EXCLUSIVE,                    // sharingMode
-        0,                                            // queueFamilyIndexCount
-        nullptr,                                      // pQueueFamilyIndices
-        VK_IMAGE_LAYOUT_UNDEFINED,                    // initialLayout
+        },                            // extent
+        1,                            // mipLevels
+        1,                            // arrayLayers
+        num_depth_stencil_samples(),  // samples
+        VK_IMAGE_TILING_OPTIMAL,      // tiling
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,  // usage
+        VK_SHARING_MODE_EXCLUSIVE,                // sharingMode
+        0,                                        // queueFamilyIndexCount
+        nullptr,                                  // pQueueFamilyIndices
+        VK_IMAGE_LAYOUT_UNDEFINED,                // initialLayout
     };
     frame_data->depth_stencil_image_ =
         app()->CreateAndBindImage(&depth_stencil_image_create_info);
@@ -427,11 +426,10 @@ class MixedSamplesSample
     // Initialize the cube descriptor sets
     frame_data->cube_descriptor_set_ =
         containers::make_unique<vulkan::DescriptorSet>(
-            data_->allocator(),
-            app()->AllocateDescriptorSet(
-                {cube_descriptor_set_layout_bindings_[0],
-                 cube_descriptor_set_layout_bindings_[1],
-                 cube_descriptor_set_layout_bindings_[2]}));
+            data_->allocator(), app()->AllocateDescriptorSet(
+                                    {cube_descriptor_set_layout_bindings_[0],
+                                     cube_descriptor_set_layout_bindings_[1],
+                                     cube_descriptor_set_layout_bindings_[2]}));
 
     VkDescriptorBufferInfo cube_buffer_infos[2] = {
         {
@@ -473,8 +471,8 @@ class MixedSamplesSample
     app()->device()->vkUpdateDescriptorSets(app()->device(), 1, &cube_write, 0,
                                             nullptr);
 
-    ::VkImageView raw_views[3] = {
-        color_view(frame_data), *frame_data->depth_stencil_image_view_};
+    ::VkImageView raw_views[3] = {color_view(frame_data),
+                                  *frame_data->depth_stencil_image_view_};
 
     // Create a framebuffer with depth and image attachments
     VkFramebufferCreateInfo framebuffer_create_info{
@@ -518,9 +516,9 @@ class MixedSamplesSample
         *frame_data->framebuffer_,                 // framebuffer
         {{0, 0},
          {app()->swapchain().width(),
-          app()->swapchain().height()}},           // renderArea
-        3,                                         // clearValueCount
-        clears                                     // clears
+          app()->swapchain().height()}},  // renderArea
+        3,                                // clearValueCount
+        clears                            // clears
     };
 
     // Barrier before write to depth image
@@ -534,19 +532,12 @@ class MixedSamplesSample
         VK_QUEUE_FAMILY_IGNORED,
         VK_QUEUE_FAMILY_IGNORED,
         *frame_data->depth_stencil_image_,
-        {
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            0,
-            1,
-            0,
-            1
-        }
-    };
+        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}};
 
-    cmdBuffer->vkCmdPipelineBarrier(
-        cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 0, nullptr, 1,
-        &barrier);
+    cmdBuffer->vkCmdPipelineBarrier(cmdBuffer,
+                                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                    VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0,
+                                    nullptr, 0, nullptr, 1, &barrier);
 
     // Draw the torus
     cmdBuffer->vkCmdBeginRenderPass(cmdBuffer, &pass_begin,
@@ -568,10 +559,10 @@ class MixedSamplesSample
 
     // Barrier before read from depth image
     barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR;
-    cmdBuffer->vkCmdPipelineBarrier(
-        cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 0, nullptr, 1,
-        &barrier);
+    cmdBuffer->vkCmdPipelineBarrier(cmdBuffer,
+                                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                    VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0,
+                                    nullptr, 0, nullptr, 1, &barrier);
 
     // Draw the cube
     pass_begin.renderPass = *cube_render_pass_;
@@ -598,9 +589,8 @@ class MixedSamplesSample
 
   virtual void Update(float time_since_last_render) override {
     model_data_->data().transform = model_data_->data().transform *
-                                   Mat44::FromRotationMatrix(Mat44::RotationY(
-                                       3.14f * time_since_last_render *
-                                       0.5f));
+                                    Mat44::FromRotationMatrix(Mat44::RotationY(
+                                        3.14f * time_since_last_render * 0.5f));
   }
   virtual void Render(vulkan::VkQueue* queue, size_t frame_index,
                       MixedSamplesFrameData* frame_data) override {
@@ -616,8 +606,8 @@ class MixedSamplesSample
         nullptr,                        // pWaitDstStageMask,
         1,                              // commandBufferCount
         &(frame_data->command_buffer_->get_command_buffer()),
-        0,                              // signalSemaphoreCount
-        nullptr                         // pSignalSemaphores
+        0,       // signalSemaphoreCount
+        nullptr  // pSignalSemaphores
     };
 
     app()->render_queue()->vkQueueSubmit(app()->render_queue(), 1,
